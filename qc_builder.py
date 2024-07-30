@@ -1,4 +1,4 @@
-# Change terra_final back to terra_reseq when done
+# Change terra_final back to terra_all when done
 import argparse as ap
 import os
 import pandas as pd
