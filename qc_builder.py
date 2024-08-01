@@ -40,7 +40,7 @@ MMDDYY = YYMMDD[2:] + YYMMDD[:2]
 run_num = run_name[3:6]
 
 # Path to desired files
-path = '../../mnt/P/EHSPHL/PHL/MICRO/COVID19/Sequencing/'Bioinformatics - STAY out!'/20{YY} Analysis Files/{run_name}'
+path = '~/../../mnt/P/EHSPHL/PHL/MICRO/COVID19/Sequencing/'Bioinformatics - STAY out!'/20{YY} Analysis Files/{run_name}'
 
 # Grabbing Excel/text files
 parser = ap.ArgumentParser()
