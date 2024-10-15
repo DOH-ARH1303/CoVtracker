@@ -6,6 +6,7 @@ import re
 import openpyxl
 import xlrd
 import numpy as np
+from CoV_master_file import add_to_CoVtracker
 
 run_name = input('Enter run name: ').strip()
 
@@ -28,11 +29,6 @@ while x <= 4:
   else:
     break
 
-if run_name.find('_') != -1:
-  run_name.replace('_', '-')
-else:
-  pass
-
 # Variables to construct appropriate file names
 YYMMDD = run_name[-6:]
 YY = YYMMDD[:2]
@@ -40,7 +36,8 @@ MMDDYY = YYMMDD[2:] + YYMMDD[:2]
 run_num = run_name[3:6]
 
 # Path to desired files
-path = '~/../../mnt/P/EHSPHL/PHL/MICRO/COVID19/Sequencing/'Bioinformatics - STAY out!'/20{YY} Analysis Files/{run_name}'
+pwd = os.getcwd()
+path = f'{pwd}/20{YY} Analysis Files/{run_name}'
 
 # Grabbing Excel/text files
 parser = ap.ArgumentParser()
@@ -65,13 +62,12 @@ dash_df = dash_xl.parse(sheet_name = 0)
 # Changed column names to match final qc file format
 tr_df.rename(columns = {f'entity:{run_name}_id': 'SpecimenId'}, inplace=True)
 
-# Change to search for regex for 'WA' and 'neg'
 # Function to pull WA#s in tr_df
 def convert_to_wa(x):
-  if x.find('WA') != -1:
+  if 'WA' in x:
     return x[:9]
-  elif x.casefold().find(r'(?i)neg\w+') != -1:
-    return 'Negative'
+  elif 'neg' in x.lower():
+    return f'{x}'
   else:
     return 'Unknown: ' + x
 wa = tr_df['SpecimenId'].apply(convert_to_wa)
@@ -79,18 +75,14 @@ tr_df['SpecimenId'] = wa
 
 # Merge dash_df with tr_df based on SpecimenId -> gets SpecimenId and Seq ID in same df
 master_df = dash_df.merge(tr_df, on = 'SpecimenId', how = 'outer')
-print(master_df)
-# Add run name column to master df - put in make_master function
-# master_df['Run_name'] = f'{run_name}'
 
 # Makes dataFrame with only the columns necessary to make the qc file and check the negative control
-flag_df = master_df[['SpecimenId', 'Seq ID', 'percent_reference_coverage','sc2_s_gene_percent_coverage', 'vadr_flag']]
+flag_df = master_df.loc[:, ['SpecimenId', 'Seq ID', 'percent_reference_coverage','sc2_s_gene_percent_coverage', 'vadr_flag']]
 
 # Add Resequencing column to flag_df and add values based on vadr_flag values
 conditions = [flag_df['vadr_flag'] == 'FLAGGED', flag_df['vadr_flag'].isnull(), flag_df['vadr_flag'] == 'PASS']
 categories = ['Frameshift', 'QC', '']
-flag_df['Resequence'] = np.select(conditions, categories, default='Unknown')
-print(flag_df)
+flag_df.loc[:, 'Resequence'] = np.select(conditions, categories, default='Unknown')
 
 # Makes df 3 columns in order specified
 flag_df = flag_df[['SpecimenId', 'Seq ID', 'Resequence']]
@@ -108,37 +100,42 @@ sgene_pct = neg_df['sc2_s_gene_percent_coverage'].to_string(index=False)
 
 if neg_pct_ref == 'NaN' or float(neg_pct_ref) <= 5:
   if sgene_pct == 'NaN' or float(sgene_pct) <= 1:
-    pass
+    ELB = 'PASS'
 elif 5 < float(neg_pct_ref) <= 10:
   if sgene_pct == 'NaN' or float(sgene_pct) <= 0:
-    pass
+    ELB = 'PASS'
   else:
     print('The negative control has a % reference coverage between 5% and 10%. There is also a percent coverage for the S gene. The run has failed and all samples will need to be resequenced.')
-    exit()
+    ELB = 'FAIL'
 else:
   approval = input(f'The negative control has a reference coverage >10%. Please contact a bioinformatition before continuing.\nDid a bioinformatician approve the run? (yes/no): ').strip().casefold()
   if approval.find('yes') != -1:
-    pass
+    ELB = 'PASS'
   elif approval.find('no') != -1:
+    ELB = 'FAIL'
     print('The run has failed. All samples will need to be re-sequenced.')
-    exit()
-
-# Search for _qc.xlsx file in run_name directory and prompt user to make decisions if the file already exists
-with os.scandir(f'{path}') as dirs:
-  for entry in dirs:
-    if '_qc.xlsx' in entry.name:
-      overwrite = input(f'A file titled CoV{run_num}_qc.xlsx already exists. Would you like to overwrite the existing file? (yes/no): ').strip().casefold()
-      if overwrite.find('yes') != -1: 
-        reseq_df.to_excel(f'{path}/CoV{run_num}_qc.xlsx', index=False)
-      elif overwrite.find('no') != -1:
-        copy = input(f"This program is only set to make one copy of the file, which is saved as run{run_num}_qc_copy.xlsx. In order to generate the file run{run_num}_qc_copy.xlsx for the first time or overwrite the run{run_num}_qc_copy.xlsx file, type 'copy'. Otherwise, type 'quit'. ").strip().casefold()
-        if copy.find('copy') != -1:
-          reseq_df.to_excel(f'{path}/CoV{run_num}_qc_copy.xlsx', index=False)
-        elif copy.find('quit') != -1:
-          print("This program is only set to either overwrite the existing file or make a copy of the file. Since you do not want to do either, the program will not be generating anything. Feel free to rerun the program if you decide to overwrite or make a copy of the existing file(s)." )
-          exit()
-    else:
-      reseq_df.to_excel(f'{path}/CoV{run_num}_qc.xlsx', index=False)
 
 # A list of columns to append to CoVtracker file
 master_columns = ['SpecimenId', 'Seq ID', 'vadr_flag', 'percent_reference_coverage', 'sc2_s_gene_percent_coverage', 'number_N', 'pango_lineage', 'pango_lineage_expanded']
+
+# Function to make a df that contains all the archive info needed for sequencing samples and append the df to a CoVtracker.csv.zip file
+add_to_CoVtracker(master_columns, master_df, f'{run_name}', path, f'{ELB}')
+
+# Search for _qc.xlsx file in run_name directory and prompt user to make decisions if the file already exists
+if ELB == 'PASS':  
+  with os.scandir(f'{path}') as dirs:
+    for entry in dirs:
+      if '_qc.xlsx' in entry.name:
+        overwrite = input(f'A file titled CoV{run_num}_qc.xlsx already exists. Would you like to overwrite the existing file? (yes/no): ').strip().casefold()
+        if overwrite.find('yes') != -1: 
+          reseq_df.to_excel(f'{path}/CoV{run_num}_qc.xlsx', index=False)
+        elif overwrite.find('no') != -1:
+          copy = input(f"This program is only set to make one copy of the file, which is saved as run{run_num}_qc_copy.xlsx. In order to generate the file run{run_num}_qc_copy.xlsx for the first time or overwrite the run{run_num}_qc_copy.xlsx file, type 'copy'. Otherwise, type 'quit'. ").strip().casefold()
+          if copy.find('copy') != -1:
+            reseq_df.to_excel(f'{path}/CoV{run_num}_qc_copy.xlsx', index=False)
+          elif copy.find('quit') != -1:
+            print("This program is only set to either overwrite the existing file or make a copy of the file. Since you do not want to do either, the program will not be generating anything. Feel free to rerun the program if you decide to overwrite or make a copy of the existing file(s)." )
+            exit()
+      else:
+        reseq_df.to_excel(f'{path}/CoV{run_num}_qc.xlsx', index=False)
+else: exit()
