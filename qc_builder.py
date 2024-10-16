@@ -24,32 +24,45 @@ fi
 # Prompts user to enter the run name
 run_name = input('Enter run name: ').strip()
 
-# Change to make instrument name more variable
-nextseq = re.search(r'CoV\d{3}[-_]VH00(442|453)[-_]\d{6}', run_name)
-miniseq = re.search(r'CoV\d{3}[-_]2068[-_]\d{6}', run_name)
-
-
 # Variables to construct appropriate file names
 YYMMDD = run_name[-6:]
 YY = YYMMDD[:2]
 MMDDYY = YYMMDD[2:] + YYMMDD[:2]
 run_num = run_name[3:6]
 
-# Absolute path to desired files -- this works!
-# pwd = os.getcwd() -- old way of getting to files
-# path = f'{pwd}/20{YY} Analysis Files/{run_name}'
-path = os.path.join('/mnt/P', 'EHSPHL', 'PHL', 'MICRO', 'COVID19', 'Sequencing', 'Bioinformatics - STAY OUT!', f'20{YY} Analysis Files', run_name)
+# Absolute path to desired files
+path = os.path.join('/mnt/P', 'EHSPHL', 'PHL', 'MICRO', 'COVID19', 'Sequencing', 'Bioinformatics - STAY OUT!', f'20{YY} Analysis Files')
 csv_path = os.path.join('/mnt/P', 'EHSPHL', 'PHL', 'MICRO', 'COVID19', 'Sequencing', 'Bioinformatics - STAY OUT!')
+
+# I just like this line of code. I refuse to get rid of it entirely :)
+  # if any(directory.__contains__(run_name) for directory in os.listdir(path)):
+
+# Checks the 20{YY} Analysis Files directory for a directory containing the run_name entered by the user
+  # Terminates the script if one is not found.
+run_dir = None 
+for directory in os.listdir(path):
+  if run_name in directory:
+    run_dir = directory
+    run_path = f'{path}/{run_dir}'
+    break 
+
+if run_dir is None:
+  print(f'There is no directory containing the run name {run_name} in {path}.\n Check the run name before rerunning the program.')
+  exit()
+
+# Regex formats for NextSeq and MiniSeq COVIDSeq run names
+# r'CoV\d{3}[-_]VH00(442|453)[-_]\d{6}'  r'CoV\d{3}[-_]2068[-_]\d{6}'
+
 # Grabbing Excel/text files
 parser = ap.ArgumentParser()
 try:
-  dash_xl = pd.ExcelFile(f'{path}/dashboard_{MMDDYY}.xlsx')
+  dash_xl = pd.ExcelFile(f'{run_path}/dashboard_{MMDDYY}.xlsx')
 except:
   parser.add_argument('dash', help = f'Enter pathway for dashboard_{MMDDYY}.xlsx file')
   args = parser.parse_args()
   dash_xl = pd.ExcelFile(args)
 try:
-  tr_xl = pd.ExcelFile(f'{path}/{run_name}_terra_all.xlsx')
+  tr_xl = pd.ExcelFile(f'{run_path}/{run_name}_terra_all.xlsx')
 except:
   parser.add_argument('tr', help = 'Enter pathway for terra_all.xlsx file')
   args = parser.parse_args()
@@ -124,19 +137,19 @@ add_to_CoVtracker(master_columns, master_df, f'{run_name}', csv_path, f'{ELB}')
 
 # Search for _qc.xlsx file in run_name directory and prompt user to make decisions if the file already exists
 if ELB == 'PASS':  
-  with os.scandir(f'{path}') as dirs:
+  with os.scandir(f'{run_path}') as dirs:
     for entry in dirs:
       if '_qc.xlsx' in entry.name:
         overwrite = input(f'A file titled CoV{run_num}_qc.xlsx already exists. Would you like to overwrite the existing file? (yes/no): ').strip().casefold()
         if overwrite.find('yes') != -1: 
-          reseq_df.to_excel(f'{path}/CoV{run_num}_qc.xlsx', index=False)
+          reseq_df.to_excel(f'{run_path}/CoV{run_num}_qc.xlsx', index=False)
         elif overwrite.find('no') != -1:
           copy = input(f"This program is only set to make one copy of the file, which is saved as run{run_num}_qc_copy.xlsx. In order to generate the file run{run_num}_qc_copy.xlsx for the first time or overwrite the run{run_num}_qc_copy.xlsx file, type 'copy'. Otherwise, type 'quit'. ").strip().casefold()
           if copy.find('copy') != -1:
-            reseq_df.to_excel(f'{path}/CoV{run_num}_qc_copy.xlsx', index=False)
+            reseq_df.to_excel(f'{run_path}/CoV{run_num}_qc_copy.xlsx', index=False)
           elif copy.find('quit') != -1:
             print("This program is only set to either overwrite the existing file or make a copy of the file. Since you do not want to do either, the program will not be generating anything. Feel free to rerun the program if you decide to overwrite or make a copy of the existing file(s)." )
             exit()
       else:
-        reseq_df.to_excel(f'{path}/CoV{run_num}_qc.xlsx', index=False)
+        reseq_df.to_excel(f'{run_path}/CoV{run_num}_qc.xlsx', index=False)
 else: exit()
