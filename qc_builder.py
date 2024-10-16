@@ -1,4 +1,3 @@
-# Change terra_final back to terra_all when done
 import argparse as ap
 import os
 import pandas as pd
@@ -8,26 +7,27 @@ import xlrd
 import numpy as np
 from CoV_master_file import add_to_CoVtracker
 
+# Mounts P: drive if not already mounted
+os.system("""
+if [ ! -d /mnt/P ]; then
+  mkdir /mnt/P
+fi
+if ! mountpoint -q /mnt/P; then
+  sudo mount -t drvfs "P:" /mnt/P
+fi
+if [ ! -d /mnt/P ] || ! mountpoint -q /mnt/P; then
+  echo "The P: drive was not mounted."
+  exit 0
+fi
+""")
+
+# Prompts user to enter the run name
 run_name = input('Enter run name: ').strip()
 
-# Returns None if run_name is not correct format
 # Change to make instrument name more variable
 nextseq = re.search(r'CoV\d{3}[-_]VH00(442|453)[-_]\d{6}', run_name)
 miniseq = re.search(r'CoV\d{3}[-_]2068[-_]\d{6}', run_name)
 
-# Gives user 5 chances to enter run_name in correct format
-x = 1
-while x <= 4:
-  if nextseq is None and miniseq is None and x <= 3:
-    run_name = input('The run name was not in the correct format. Please enter the run name (CoVXXX-VH00XXX-YYMMDD or CoVXXX-2068-YYMMDD): ').strip()
-    x += 1
-    nextseq = re.search(r'CoV\d{3}[-_]VH00(442|453)[-_]\d{6}', run_name)
-    miniseq = re.search(r'CoV\d{3}[-_]2068[-_]\d{6}', run_name)
-  elif nextseq is None and miniseq is None and x > 3:
-    print('Run name is not in the correct format. Please check the run name before re-running the program.')
-    exit()
-  else:
-    break
 
 # Variables to construct appropriate file names
 YYMMDD = run_name[-6:]
@@ -35,10 +35,11 @@ YY = YYMMDD[:2]
 MMDDYY = YYMMDD[2:] + YYMMDD[:2]
 run_num = run_name[3:6]
 
-# Path to desired files
-pwd = os.getcwd()
-path = f'{pwd}/20{YY} Analysis Files/{run_name}'
-
+# Absolute path to desired files -- this works!
+# pwd = os.getcwd() -- old way of getting to files
+# path = f'{pwd}/20{YY} Analysis Files/{run_name}'
+path = os.path.join('/mnt/P', 'EHSPHL', 'PHL', 'MICRO', 'COVID19', 'Sequencing', 'Bioinformatics - STAY OUT!', f'20{YY} Analysis Files', run_name)
+csv_path = os.path.join('/mnt/P', 'EHSPHL', 'PHL', 'MICRO', 'COVID19', 'Sequencing', 'Bioinformatics - STAY OUT!')
 # Grabbing Excel/text files
 parser = ap.ArgumentParser()
 try:
@@ -48,9 +49,9 @@ except:
   args = parser.parse_args()
   dash_xl = pd.ExcelFile(args)
 try:
-  tr_xl = pd.ExcelFile(f'{path}/{run_name}_terra_final.xlsx')
+  tr_xl = pd.ExcelFile(f'{path}/{run_name}_terra_all.xlsx')
 except:
-  parser.add_argument('tr', help = 'Enter pathway for terra_reseq.xlsx file')
+  parser.add_argument('tr', help = 'Enter pathway for terra_all.xlsx file')
   args = parser.parse_args()
   tr_xl = pd.ExcelFile(args)
 
@@ -119,7 +120,7 @@ else:
 master_columns = ['SpecimenId', 'Seq ID', 'vadr_flag', 'percent_reference_coverage', 'sc2_s_gene_percent_coverage', 'number_N', 'pango_lineage', 'pango_lineage_expanded']
 
 # Function to make a df that contains all the archive info needed for sequencing samples and append the df to a CoVtracker.csv.zip file
-add_to_CoVtracker(master_columns, master_df, f'{run_name}', path, f'{ELB}')
+add_to_CoVtracker(master_columns, master_df, f'{run_name}', csv_path, f'{ELB}')
 
 # Search for _qc.xlsx file in run_name directory and prompt user to make decisions if the file already exists
 if ELB == 'PASS':  
