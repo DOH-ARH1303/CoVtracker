@@ -1,9 +1,8 @@
-def add_to_CoVtracker(columns, master_df_name, run_name, file_path, ELB_stat):
+def add_to_CoVtracker(columns, master_df_name, run_name, CoVtracker_path, ELB_stat):
   import os
   import pandas as pd
   import numpy as np
 
-  CoVtracker_path = file_path
   # Throw out an error if none of the columns are found
   # Makes a list of the columns in the master_df that could be added to CoVtracker and prints them
   CoVtracker_columns = []
@@ -36,7 +35,6 @@ def add_to_CoVtracker(columns, master_df_name, run_name, file_path, ELB_stat):
       # Overwrite differences if WA#s and run name is the same in the CoVtracker_df and current
       current.update(CoVtracker_df, overwrite = True)
       updated_df = current
-      print(updated_df)
     else:
       updated_df = current.merge(CoVtracker_df, how='outer')
     updated_df.to_csv(f'{CoVtracker_path}/CoVtracker.csv.zip', compression='zip', index=None)
