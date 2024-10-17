@@ -57,7 +57,7 @@ except:
   args = parser.parse_args()
   run_dir = args
 
-  run_path = f'{path}/{run_dir}'
+run_path = f'{path}/{run_dir}'
 
 # Grabbing Excel/text files
 try:
