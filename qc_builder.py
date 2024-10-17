@@ -25,46 +25,53 @@ fi
 run_name = input('Enter run name: ').strip()
 
 # Variables to construct appropriate file names
+# GROUP SO IT CAN BE DIFFERENT IF THE RUN NAME FORMAT IS DIFFERENT
 YYMMDD = run_name[-6:]
 YY = YYMMDD[:2]
 MMDDYY = YYMMDD[2:] + YYMMDD[:2]
 run_num = run_name[3:6]
 
-# Absolute path to desired files
+# Absolute path to desired File System Objects (fso)
 path = os.path.join('/mnt/P', 'EHSPHL', 'PHL', 'MICRO', 'COVID19', 'Sequencing', 'Bioinformatics - STAY OUT!', f'20{YY} Analysis Files')
 csv_path = os.path.join('/mnt/P', 'EHSPHL', 'PHL', 'MICRO', 'COVID19', 'Sequencing', 'Bioinformatics - STAY OUT!')
 
 # I just like this line of code. I refuse to get rid of it entirely :)
-  # if any(directory.__contains__(run_name) for directory in os.listdir(path)):
+  # if any(file.__contains__('dash') for file in os.listdir(run_path)):
 
-# Checks the 20{YY} Analysis Files directory for a directory containing the run_name entered by the user
-  # Terminates the script if one is not found.
-run_dir = None 
-for directory in os.listdir(path):
-  if run_name in directory:
-    run_dir = directory
-    run_path = f'{path}/{run_dir}'
-    break 
+# Returns filenames that contain query
+def whichfile(pathway, query):
+    with os.scandir(pathway) as dirs:
+        for entry in dirs:
+            if query in entry.name:
+                #print(entry.name)
+                fso=entry.name
+                break
+    return fso
 
-if run_dir is None:
-  print(f'There is no directory containing the run name {run_name} in {path}.\n Check the run name before rerunning the program.')
-  exit()
+parser = ap.ArgumentParser()
+# Grabbing run directory
+try:
+  run_dir = whichfile(path, run_name)
+except:
+  parser.add_argument('--run', '-r', help = f'Enter pathway for run directory.')
+  args = parser.parse_args()
+  run_dir = args
 
-# Regex formats for NextSeq and MiniSeq COVIDSeq run names
-# r'CoV\d{3}[-_]VH00(442|453)[-_]\d{6}'  r'CoV\d{3}[-_]2068[-_]\d{6}'
+  run_path = f'{path}/{run_dir}'
 
 # Grabbing Excel/text files
-parser = ap.ArgumentParser()
 try:
-  dash_xl = pd.ExcelFile(f'{run_path}/dashboard_{MMDDYY}.xlsx')
+  dash_file = whichfile(run_path,'dash')
+  dash_xl = pd.ExcelFile(f'{run_path}/{dash_file}')
 except:
-  parser.add_argument('dash', help = f'Enter pathway for dashboard_{MMDDYY}.xlsx file')
+  parser.add_argument('--dash', '-d', help = f'Enter pathway for dashboard_{MMDDYY}.xlsx file.')
   args = parser.parse_args()
   dash_xl = pd.ExcelFile(args)
 try:
-  tr_xl = pd.ExcelFile(f'{run_path}/{run_name}_terra_all.xlsx')
+  tr_file = whichfile(run_path,'terra_all')
+  tr_xl = pd.ExcelFile(f'{run_path}/{tr_file}')
 except:
-  parser.add_argument('tr', help = 'Enter pathway for terra_all.xlsx file')
+  parser.add_argument('--tr', '-t', help = 'Enter pathway for terra_all.xlsx file.')
   args = parser.parse_args()
   tr_xl = pd.ExcelFile(args)
 
