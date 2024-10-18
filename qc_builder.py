@@ -34,46 +34,48 @@ run_num = run_name[3:6]
 # Absolute path to desired File System Objects (fso)
 path = os.path.join('/mnt/P', 'EHSPHL', 'PHL', 'MICRO', 'COVID19', 'Sequencing', 'Bioinformatics - STAY OUT!', f'20{YY} Analysis Files')
 csv_path = os.path.join('/mnt/P', 'EHSPHL', 'PHL', 'MICRO', 'COVID19', 'Sequencing', 'Bioinformatics - STAY OUT!')
-
+run_path = f'{path}/{run_name}'
 # I just like this line of code. I refuse to get rid of it entirely :)
-  # if any(file.__contains__('dash') for file in os.listdir(run_path)):
+# if any(directory.__contains__('run_name') for directory in os.listdir(path)):
+
+if any(directory.__contains__(f'20{YY} Analysis Files') for directory in os.listdir(csv_path)) is False:
+  print(f'The path "{path}" could not be found.\n Make sure the run name was entered in the correct format.\n CoVXXX-VH00XXX-YYMMDD for NextSeq\n CoVXXX-XXXX-YYMMDD for MiniSeq')
+  exit()
 
 # Returns filenames that contain query
 def whichfile(pathway, query):
     with os.scandir(pathway) as dirs:
         for entry in dirs:
             if query in entry.name:
-                #print(entry.name)
-                fso=entry.name
-                break
+              fso=entry.name
+              break
+            else:
+              fso=None
     return fso
-
 parser = ap.ArgumentParser()
 # Grabbing run directory
-try:
+if any(directory.__contains__(run_name) for directory in os.listdir(path)) is False:
+  print(f'The directory "{run_path}" could not be found.\n Make sure the run name was entered in the correct format.\n CoVXXX-VH00XXX-YYMMDD for NextSeq\n CoVXXX-XXXX-YYMMDD for MiniSeq')
+  exit()
+else:
   run_dir = whichfile(path, run_name)
-except:
-  parser.add_argument('--run', '-r', help = f'Enter pathway for run directory.')
-  args = parser.parse_args()
-  run_dir = args
-
-run_path = f'{path}/{run_dir}'
-
+  tr_file = whichfile(run_path,'terra_all')
+  dash_file = whichfile(run_path,'dash')
+  
 # Grabbing Excel/text files
 try:
-  dash_file = whichfile(run_path,'dash')
   dash_xl = pd.ExcelFile(f'{run_path}/{dash_file}')
-except:
-  parser.add_argument('--dash', '-d', help = f'Enter pathway for dashboard_{MMDDYY}.xlsx file.')
+except FileNotFoundError:
+  parser.add_argument('--dash', help = f'Enter pathway for dashboard_{MMDDYY}.xlsx file')
   args = parser.parse_args()
-  dash_xl = pd.ExcelFile(args)
+  dash_xl = pd.ExcelFile(args.dash)
 try:
-  tr_file = whichfile(run_path,'terra_all')
+# Have it accept terra_all as any file type and then convert it to excel (can I do this?)
   tr_xl = pd.ExcelFile(f'{run_path}/{tr_file}')
 except:
-  parser.add_argument('--tr', '-t', help = 'Enter pathway for terra_all.xlsx file.')
+  parser.add_argument('--tr', help = 'Enter pathway for terra_all file')
   args = parser.parse_args()
-  tr_xl = pd.ExcelFile(args)
+  tr_xl = pd.ExcelFile(args.tr)
 
   # xl.sheet_names returns a list of all sheets in the excel file
   # parse converts sheet(s) to dataframe(s) (df)
