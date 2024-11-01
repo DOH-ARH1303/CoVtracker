@@ -1,4 +1,5 @@
 import argparse as ap
+from subprocess import call
 import os
 import pandas as pd
 import re
@@ -8,18 +9,7 @@ import numpy as np
 from CoV_master_file import add_to_CoVtracker
 
 # Mounts P: drive if not already mounted
-os.system("""
-if [ ! -d /mnt/P ]; then
-  mkdir /mnt/P
-fi
-if ! mountpoint -q /mnt/P; then
-  sudo mount -t drvfs "P:" /mnt/P
-fi
-if [ ! -d /mnt/P ] || ! mountpoint -q /mnt/P; then
-  echo "The P: drive was not mounted."
-  exit 0
-fi
-""")
+call("./mount_P_drive.sh")
 
 # Prompts user to enter the run name
 run_name = input('Enter run name: ').strip()
